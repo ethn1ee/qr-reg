@@ -10,8 +10,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing row or score' }, { status: 400 });
     }
 
+    // Vercel automatically sets NODE_ENV to 'production'
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const auth = new google.auth.GoogleAuth({
-      keyFile: 'credentials.json',
+      // Use credentials from environment variables in production
+      // and the key file in development
+      credentials: isProduction ? {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        // The private key must have newlines replaced with \\n in the environment variable
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      } : undefined,
+      keyFile: isProduction ? undefined : 'credentials.json',
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
@@ -39,8 +49,12 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, newScore });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
+    // Provide a more specific error message if credentials are the issue
+    if (error.message.includes('credential')) {
+      return NextResponse.json({ error: 'Authentication failed. Please check server credentials.' }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
