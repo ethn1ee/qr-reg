@@ -2,6 +2,32 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Prerequisites
+
+*   Node.js and npm installed.
+*   A Google Cloud project with the Google Sheets API enabled.
+*   A Google Sheet shared with your service account.
+
+### Setup
+
+1.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+2.  **Set up Google Sheets API credentials:**
+    - Follow the instructions in `google-sheets-setup.md` to create a service account and download the credentials JSON file.
+    - Place the `credentials.json` file in the root of the project.
+
+3.  **Set up environment variables:**
+    - Create a `.env.local` file in the root of the project.
+    - Add your Google Sheet's ID to the `.env.local` file:
+      ```
+      SPREADSHEET_ID=your_spreadsheet_id_here
+      ```
+
+### Running the Development Server
+
 First, run the development server:
 
 ```bash
