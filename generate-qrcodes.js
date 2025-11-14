@@ -5,8 +5,8 @@ const path = require('path');
 const outputDir = path.join(__dirname, 'qrcodes');
 
 // --- Configuration ---
-const START_NUMBER = 181;
-const END_NUMBER = 200;
+const START_NUMBER = 201;
+const END_NUMBER = 230;
 // -------------------
 
 const generate = async () => {
