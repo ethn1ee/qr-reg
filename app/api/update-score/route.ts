@@ -28,12 +28,13 @@ export async function POST(req: NextRequest) {
     const sheets = google.sheets({ version: 'v4', auth });
 
     const spreadsheetId = process.env.SPREADSHEET_ID;
+    const sheetName = process.env.SHEET_NAME || 'Sheet1';
     const scoreColumn = process.env.SCORE_COLUMN || 'G'; // Configurable score column, defaults to G
 
     // Fetch the current score first
     const getResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `Sheet1!${scoreColumn}${row}`,
+      range: `${sheetName}!${scoreColumn}${row}`,
     });
 
     const currentScore = parseInt(getResponse.data.values?.[0]?.[0] || '0', 10);
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Sheet1!${scoreColumn}${row}`,
+      range: `${sheetName}!${scoreColumn}${row}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[newScore]],
