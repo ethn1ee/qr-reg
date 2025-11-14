@@ -2,13 +2,31 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
-// Helper component for the success/error overlay
-const StatusOverlay = ({ message, isError }: { message: string; isError: boolean }) => (
-  <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50`}>
-    <div className={`p-8 rounded-lg shadow-2xl text-center ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+// Helper component for the status overlay, now with a button
+const StatusOverlay = ({
+  message,
+  isError,
+  isUpdating,
+  onClose
+}: {
+  message: string;
+  isError: boolean;
+  isUpdating: boolean;
+  onClose: () => void;
+}) => (
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+    <div className={`w-full max-w-sm p-6 rounded-xl shadow-2xl text-center ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
       <p className="text-2xl font-bold">{message}</p>
+      {!isUpdating && (
+        <button
+          onClick={onClose}
+          className="mt-6 w-full px-6 py-3 text-lg font-semibold text-white bg-blue-500 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400"
+        >
+          OK
+        </button>
+      )}
     </div>
   </div>
 );
@@ -17,6 +35,7 @@ export default function QrScanner() {
   const [score, setScore] = useState(10);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
@@ -24,52 +43,45 @@ export default function QrScanner() {
       fps: 10,
       qrbox: { width: 250, height: 250 },
       rememberLastUsedCamera: true,
-      supportedScanTypes: [], // Use all supported scan types
+      supportedScanTypes: [],
     };
 
     const qrScanner = new Html5Qrcode('qr-reader');
     scannerRef.current = qrScanner;
 
     const onScanSuccess = (decodedText: string) => {
+      // Stop further scans until user clicks OK
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current.pause(true);
+      }
+      
       if (!isNaN(Number(decodedText))) {
         handleUpdateScore(decodedText);
       } else {
-        showStatus(`Invalid QR Code: Not a row number: ${decodedText}`, true);
+        setStatusMessage('Invalid QR Code: Not a row number.');
+        setIsError(true);
+        setIsUpdating(false);
       }
     };
 
-    const onScanError = (error: any) => {
-      // This callback is called frequently, so we'll keep it quiet
-      // console.warn(`QR scan error: ${error}`);
-    };
-
-    qrScanner.start({ facingMode: 'environment' }, config, onScanSuccess, onScanError)
+    qrScanner.start({ facingMode: 'environment' }, config, onScanSuccess, undefined)
       .catch(err => {
         console.error("Unable to start scanner", err);
-        showStatus("Could not start camera.", true);
+        setStatusMessage("Could not start camera.");
+        setIsError(true);
       });
 
     return () => {
-      if (scannerRef.current && scannerRef.current.isScanning) {
+      if (scannerRef.current?.isScanning) {
         scannerRef.current.stop().catch(err => console.error("Failed to stop scanner", err));
       }
     };
   }, []);
 
-  const showStatus = (message: string, error: boolean) => {
-    setStatusMessage(message);
-    setIsError(error);
-    setTimeout(() => {
-      setStatusMessage(null);
-    }, 2000); // Message disappears after 2 seconds
-  };
-
   const handleUpdateScore = async (scannedRow: string) => {
-    // Prevent multiple submissions while one is in progress
-    if (statusMessage) return;
-
     setStatusMessage('Updating...');
     setIsError(false);
+    setIsUpdating(true);
 
     try {
       const response = await fetch('/api/update-score', {
@@ -77,22 +89,39 @@ export default function QrScanner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ row: scannedRow, score }),
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        showStatus(`Row ${scannedRow} updated! New Score: ${data.newScore}`, false);
+        setStatusMessage(`Row ${scannedRow} updated! New Score: ${data.newScore}`);
+        setIsError(false);
       } else {
-        showStatus(`Error: ${data.error}`, true);
+        setStatusMessage(`Error: ${data.error}`);
+        setIsError(true);
       }
     } catch (error) {
-      showStatus('Network error. Please try again.', true);
+      setStatusMessage('Network error. Please try again.');
+      setIsError(true);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCloseOverlay = () => {
+    setStatusMessage(null);
+    if (scannerRef.current) {
+      scannerRef.current.resume();
     }
   };
 
   return (
     <div className="w-full h-screen bg-black">
-      {statusMessage && <StatusOverlay message={statusMessage} isError={isError} />}
+      {statusMessage && (
+        <StatusOverlay 
+          message={statusMessage} 
+          isError={isError} 
+          isUpdating={isUpdating}
+          onClose={handleCloseOverlay} 
+        />
+      )}
       
       <div id="qr-reader" className="w-full h-full"></div>
 
