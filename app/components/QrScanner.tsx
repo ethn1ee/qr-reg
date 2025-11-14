@@ -34,7 +34,7 @@ export default function QrScanner() {
       if (!isNaN(Number(decodedText))) {
         handleUpdateScore(decodedText);
       } else {
-        showStatus(`Invalid QR Code: Not a row number.`, true);
+        showStatus(`Invalid QR Code: Not a row number: ${decodedText}`, true);
       }
     };
 
