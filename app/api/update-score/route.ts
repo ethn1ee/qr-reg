@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const sheets = google.sheets({ version: 'v4', auth });
 
     const spreadsheetId = process.env.SPREADSHEET_ID;
-    const scoreColumn = 'C'; // Assuming Score is in column C
+    const scoreColumn = 'G'; // Assuming Score is in column G
 
     // Fetch the current score first
     const getResponse = await sheets.spreadsheets.values.get({
